@@ -1,29 +1,98 @@
 @import "tailwindcss";
 
+/*
+ * Identidade: oficina de verdade.
+ * Asfalto e concreto de base, o amarelo do adesivo de troca de óleo para "hoje",
+ * e a placa Mercosul como o único elemento chamativo.
+ */
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-barlow);
+  --font-display: var(--font-barlow-cond);
+
+  --color-fundo: #edefea;
+  --color-linha: #d3d8d0;
+  --color-tinta: #1b2220;
+  --color-tinta-2: #47524d;
+  --color-tinta-3: #66716c;
+  --color-asfalto: #1b2220;
+  --color-asfalto-2: #2a3330;
+
+  --color-sinal: #f2b705;
+  --color-sinal-claro: #fff3c4;
+  --color-sinal-escuro: #6b4f00;
+  --color-vermelho: #b42318;
+  --color-vermelho-claro: #fde7e4;
+  --color-verde: #146c43;
+  --color-verde-claro: #e2f2e8;
+  --color-whats: #17834a;
+  --color-placa: #1d3f94;
 }
 
 body {
-  background: #f4f5f7;
-  color: #111827;
+  background: var(--color-fundo);
+  color: var(--color-tinta);
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sinal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+details.menu > summary::-webkit-details-marker {
+  display: none;
 }
 
 @layer components {
   .campo {
-    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100;
+    @apply w-full rounded-lg border border-linha bg-white px-3 py-3 text-base outline-none focus:border-tinta focus:ring-2 focus:ring-sinal/40;
   }
   .rotulo {
-    @apply mb-1 block text-sm font-medium text-gray-700;
+    @apply mb-1 block text-sm font-semibold text-tinta-2;
   }
   .botao {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white active:bg-blue-700 disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-asfalto px-4 py-3 text-base font-semibold text-white active:bg-asfalto-2 disabled:opacity-50;
   }
   .botao-sec {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-medium text-gray-800 active:bg-gray-100 disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-linha bg-white px-4 py-3 text-base font-medium text-tinta active:bg-fundo disabled:opacity-50;
+  }
+  .botao-whats {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-whats px-4 py-3 text-base font-semibold text-white active:brightness-95 disabled:opacity-50;
   }
   .cartao {
-    @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm;
+    @apply rounded-[10px] border border-linha bg-white p-4;
+  }
+  .etiqueta {
+    @apply shrink-0 rounded-md px-2 py-1 text-xs font-semibold;
+  }
+  .aviso {
+    @apply rounded-lg bg-sinal-claro p-2 text-xs text-sinal-escuro;
+  }
+
+  /* Placa Mercosul: faixa azul em cima, letras condensadas. */
+  .placa {
+    @apply inline-flex flex-col overflow-hidden rounded-[5px] border-2 border-tinta bg-white align-middle leading-none;
+    font-family: var(--font-display);
+  }
+  .placa::before {
+    content: "BRASIL";
+    @apply block bg-placa px-1 py-[1px] text-center text-[7px] font-semibold tracking-[0.2em] text-white;
+  }
+  .placa > span {
+    @apply px-1.5 py-0.5 text-sm font-bold tracking-wider text-tinta;
   }
 }

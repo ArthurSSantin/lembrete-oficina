@@ -30,8 +30,8 @@ export function FormLogin() {
         />
       </div>
 
-      {estado?.erro && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{estado.erro}</p>}
-      {estado?.ok && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{estado.ok}</p>}
+      {estado?.erro && <p className="rounded-lg bg-vermelho-claro p-3 text-sm text-vermelho">{estado.erro}</p>}
+      {estado?.ok && <p className="rounded-lg bg-verde-claro p-3 text-sm text-verde">{estado.ok}</p>}
 
       <button type="submit" disabled={pendente} className="botao w-full">
         {pendente ? "Aguarde..." : modo === "entrar" ? "Entrar" : "Criar conta"}
@@ -40,7 +40,7 @@ export function FormLogin() {
       <button
         type="button"
         onClick={() => setModo(modo === "entrar" ? "cadastrar" : "entrar")}
-        className="w-full text-sm text-blue-600"
+        className="w-full text-sm text-tinta underline underline-offset-2"
       >
         {modo === "entrar" ? "Ainda não tem conta? Criar conta" : "Já tem conta? Entrar"}
       </button>

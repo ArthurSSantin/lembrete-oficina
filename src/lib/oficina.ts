@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Oficina } from "@/lib/types";
 
@@ -11,6 +12,9 @@ import type { Oficina } from "@/lib/types";
  * e `getClaims` confere o token localmente, sem ir ao servidor de Auth.
  */
 export const getContexto = cache(async () => {
+  // getClaims confere a validade do token com a hora atual: precisa rodar na requisição,
+  // nunca no prerender.
+  await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -20,7 +24,9 @@ export const getContexto = cache(async () => {
 
   const { data: oficina } = await supabase
     .from("oficinas")
-    .select("id, nome, whatsapp, assinatura_texto")
+    .select(
+      "id, nome, whatsapp, assinatura_texto, link_avaliacao, modelo_lembrete, modelo_recomendado, modelo_posvenda, modelo_reativacao, dias_sumido",
+    )
     .order("criado_em")
     .limit(1)
     .maybeSingle<Oficina>();

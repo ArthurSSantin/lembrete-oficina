@@ -13,7 +13,7 @@ export default async function OnboardingPage() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="cartao w-full max-w-sm">
         <h1 className="mb-1 text-2xl font-bold">Sua oficina</h1>
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="mb-6 text-sm text-tinta-2">
           Já vamos cadastrar os serviços mais comuns (troca de óleo, alinhamento, freios...).
           Você pode ajustar os prazos depois.
         </p>

@@ -1,8 +1,26 @@
 /** Mantém só dígitos e garante o DDI 55 (Brasil). */
 export function normalizarWhatsapp(entrada: string): string {
-  const digitos = entrada.replace(/\D/g, "");
+  // Tira o 0 de discagem interurbana (011 99999-8888).
+  const digitos = entrada.replace(/\D/g, "").replace(/^0+/, "");
   if (digitos.length === 10 || digitos.length === 11) return "55" + digitos;
   return digitos;
+}
+
+/** Número de celular/fixo brasileiro completo: 55 + DDD + 8 ou 9 dígitos. */
+export function whatsappValido(numero: string): boolean {
+  return /^55[1-9]\d{9,10}$/.test(numero);
+}
+
+/**
+ * Lê valor em reais escrito de vários jeitos: "1.250,50", "1250,5", "250.00", "1,250.00", "R$ 300".
+ * O último separador seguido de 1 ou 2 dígitos é o decimal; os outros são de milhar.
+ */
+export function lerDecimal(entrada: string): number | null {
+  const t = entrada.replace(/[^\d,.-]/g, "");
+  if (!/\d/.test(t)) return null;
+  const m = t.match(/^(-?[\d.,]*?)[.,](\d{1,2})$/);
+  const n = m ? parseFloat(`${m[1].replace(/[.,]/g, "") || "0"}.${m[2]}`) : parseFloat(t.replace(/[.,]/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
 export function formatarWhatsapp(numero: string): string {
@@ -17,8 +35,14 @@ export function normalizarPlaca(entrada: string): string {
   return entrada.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+/** Mercosul (ABC1D23) fica sem traço; o modelo antigo (ABC1234) ganha o traço. */
 export function formatarPlaca(placa: string): string {
-  return placa.length === 7 ? `${placa.slice(0, 3)}-${placa.slice(3)}` : placa;
+  if (/^[A-Z]{3}\d{4}$/.test(placa)) return `${placa.slice(0, 3)}-${placa.slice(3)}`;
+  return placa;
+}
+
+export function plural(n: number, singular: string, pluralForma = singular + "s"): string {
+  return `${n} ${n === 1 ? singular : pluralForma}`;
 }
 
 /** Data de hoje no fuso de São Paulo, formato AAAA-MM-DD. */

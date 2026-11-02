@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Cópia do app usada pelos testes e2e (tests/e2e/servidor.mjs).
+    ".e2e-app/**",
   ]),
 ]);
 

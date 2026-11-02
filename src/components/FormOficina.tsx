@@ -33,8 +33,33 @@ export function FormOficina({ oficina }: { oficina: Oficina }) {
           className="campo"
         />
       </div>
-      {estado?.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
-      {estado?.ok && <p className="text-sm text-green-700">{estado.ok}</p>}
+      <div>
+        <label className="rotulo" htmlFor="link_avaliacao">Link de avaliação no Google</label>
+        <input
+          id="link_avaliacao"
+          name="link_avaliacao"
+          type="url"
+          defaultValue={oficina.link_avaliacao ?? ""}
+          placeholder="https://g.page/r/..."
+          className="campo"
+        />
+        <p className="mt-1 text-xs text-tinta-3">
+          No Perfil da Empresa no Google, toque em &quot;Pedir avaliações&quot; e copie o link. Ele vai
+          na mensagem de pós-venda.
+        </p>
+      </div>
+      <div>
+        <label className="rotulo" htmlFor="dias_sumido">Cliente sumido depois de (dias)</label>
+        <input
+          id="dias_sumido"
+          name="dias_sumido"
+          inputMode="numeric"
+          defaultValue={oficina.dias_sumido}
+          className="campo"
+        />
+      </div>
+      {estado?.erro && <p className="text-sm text-vermelho">{estado.erro}</p>}
+      {estado?.ok && <p className="text-sm text-verde">{estado.ok}</p>}
       <button type="submit" disabled={pendente} className="botao w-full">
         {pendente ? "Salvando..." : "Salvar"}
       </button>

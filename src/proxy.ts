@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ROTAS_PUBLICAS = ["/login", "/privacidade"];
+const ROTAS_PUBLICAS = ["/login", "/privacidade", "/manifest.webmanifest", "/icon", "/apple-icon"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -34,9 +34,12 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  const publica = ROTAS_PUBLICAS.some((r) =>
-    request.nextUrl.pathname.startsWith(r),
-  );
+  const caminho = request.nextUrl.pathname;
+  const publica = ROTAS_PUBLICAS.some((r) => caminho === r || caminho.startsWith(r + "/"));
+
+  if (!user && !publica && caminho.startsWith("/api/")) {
+    return NextResponse.json({ erro: "não autenticado" }, { status: 401 });
+  }
 
   if (!user && !publica) {
     const url = request.nextUrl.clone();

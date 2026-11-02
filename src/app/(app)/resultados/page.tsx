@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { getContexto } from "@/lib/oficina";
-import { formatarMoeda, hojeISO, somarDias } from "@/lib/util";
+import { formatarMoeda, hojeISO, plural, somarDias } from "@/lib/util";
 
 const PERIODOS = [
   { valor: "30", rotulo: "30 dias" },
@@ -7,29 +8,48 @@ const PERIODOS = [
   { valor: "365", rotulo: "12 meses" },
 ];
 
+type Chamado = {
+  id: string;
+  origem: "feito" | "recomendado";
+  lembrete_status: string;
+  retorno_servico_id: string | null;
+};
+
+// Depende do usuário logado: renderiza na hora, atrás do loading.tsx.
+export const instant = false;
+
 export default async function ResultadosPage({ searchParams }: PageProps<"/resultados">) {
   const { supabase, oficina } = await getContexto();
   const { p } = await searchParams;
   const dias = PERIODOS.some((x) => x.valor === p) ? Number(p) : 30;
   const inicio = somarDias(hojeISO(), -dias);
 
-  const [{ data: chamados }, { count: atendimentos }, { count: clientes }] = await Promise.all([
-    supabase
-      .from("servicos")
-      .select("id, lembrete_status, retorno_servico_id")
-      .eq("oficina_id", oficina.id)
-      .in("lembrete_status", ["contatado", "retornou"])
-      .gte("contatado_em", inicio),
-    supabase
-      .from("servicos")
-      .select("id", { count: "exact", head: true })
-      .eq("oficina_id", oficina.id)
-      .gte("data", inicio),
-    supabase
-      .from("clientes")
-      .select("id", { count: "exact", head: true })
-      .eq("oficina_id", oficina.id),
-  ]);
+  const [{ data: chamados }, { count: atendimentos }, { count: recomendacoes }, { count: clientes }] =
+    await Promise.all([
+      supabase
+        .from("servicos")
+        .select("id, origem, lembrete_status, retorno_servico_id")
+        .eq("oficina_id", oficina.id)
+        .in("lembrete_status", ["contatado", "retornou"])
+        .gte("contatado_em", inicio)
+        .returns<Chamado[]>(),
+      supabase
+        .from("servicos")
+        .select("id", { count: "exact", head: true })
+        .eq("oficina_id", oficina.id)
+        .eq("origem", "feito")
+        .gte("data", inicio),
+      supabase
+        .from("servicos")
+        .select("id", { count: "exact", head: true })
+        .eq("oficina_id", oficina.id)
+        .eq("origem", "recomendado")
+        .gte("data", inicio),
+      supabase
+        .from("clientes")
+        .select("id", { count: "exact", head: true })
+        .eq("oficina_id", oficina.id),
+    ]);
 
   const lista = chamados ?? [];
   const retornos = lista.filter((s) => s.lembrete_status === "retornou");
@@ -42,53 +62,65 @@ export default async function ResultadosPage({ searchParams }: PageProps<"/resul
   }
 
   const taxa = lista.length ? Math.round((retornos.length / lista.length) * 100) : 0;
+  const recomendadosVoltaram = retornos.filter((r) => r.origem === "recomendado").length;
 
-  const numeros = [
+  const linhas = [
     { rotulo: "Clientes chamados", valor: String(lista.length) },
-    { rotulo: "Voltaram", valor: String(retornos.length) },
+    { rotulo: "Voltaram depois da mensagem", valor: String(retornos.length) },
     { rotulo: "Taxa de retorno", valor: `${taxa}%` },
-    { rotulo: "Faturado com retornos", valor: formatarMoeda(valorRetornos) },
+    { rotulo: "Recomendações que viraram serviço", valor: String(recomendadosVoltaram) },
+    { rotulo: "Atendimentos registrados", valor: String(atendimentos ?? 0) },
+    { rotulo: "Serviços recomendados", valor: String(recomendacoes ?? 0) },
+    { rotulo: "Clientes cadastrados", valor: String(clientes ?? 0) },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Resultados</h1>
-        <p className="text-sm text-gray-600">O que os lembretes trouxeram de volta.</p>
-      </div>
+      <h1 className="text-3xl font-bold">Resultados</h1>
 
-      <div className="flex gap-2">
-        {PERIODOS.map((x) => (
-          <a
-            key={x.valor}
-            href={`?p=${x.valor}`}
-            className={`rounded-full px-3 py-1 text-sm ${
-              Number(x.valor) === dias ? "bg-blue-600 text-white" : "bg-white text-gray-700 border border-gray-300"
-            }`}
-          >
-            {x.rotulo}
-          </a>
-        ))}
-      </div>
+      <nav aria-label="Período" className="flex gap-2">
+        {PERIODOS.map((x) => {
+          const atual = Number(x.valor) === dias;
+          return (
+            <Link
+              key={x.valor}
+              href={`?p=${x.valor}`}
+              aria-current={atual ? "page" : undefined}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                atual ? "bg-asfalto text-white" : "border border-linha bg-white text-tinta-2"
+              }`}
+            >
+              {x.rotulo}
+            </Link>
+          );
+        })}
+      </nav>
 
-      <div className="grid grid-cols-2 gap-3">
-        {numeros.map((n) => (
-          <div key={n.rotulo} className="cartao">
-            <p className="text-sm text-gray-600">{n.rotulo}</p>
-            <p className="mt-1 text-2xl font-bold">{n.valor}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="cartao text-sm text-gray-600">
-        <p>
-          {atendimentos ?? 0} serviços registrados no período · {clientes ?? 0} clientes no total.
+      <section className="rounded-[10px] bg-asfalto p-5 text-white">
+        <p className="text-white/75">Voltou para o caixa com os lembretes</p>
+        <p className="font-display text-5xl font-bold text-sinal">{formatarMoeda(valorRetornos)}</p>
+        <p className="mt-2 text-sm text-white/75">
+          {retornos.length > 0
+            ? `${plural(retornos.length, "cliente voltou", "clientes voltaram")} depois de receber a mensagem.`
+            : "Quando um cliente chamado pelo sistema voltar, o valor do serviço aparece aqui."}
         </p>
-        <p className="mt-2">
-          Um retorno é contado quando você chama o cliente pelo sistema e depois registra o mesmo
-          serviço para o carro dele. O valor só aparece se você informar o valor no atendimento.
-        </p>
-      </div>
+      </section>
+
+      <section className="cartao">
+        <dl className="divide-y divide-linha">
+          {linhas.map((l) => (
+            <div key={l.rotulo} className="flex items-baseline justify-between gap-4 py-2.5">
+              <dt className="text-tinta-2">{l.rotulo}</dt>
+              <dd className="font-display text-xl font-bold">{l.valor}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <p className="text-sm text-tinta-3">
+        Um retorno conta quando você chama o cliente pelo sistema e depois registra o mesmo serviço
+        para o carro dele. O valor só entra se você informar o valor no atendimento.
+      </p>
     </div>
   );
 }

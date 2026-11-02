@@ -11,7 +11,7 @@ async function NomeOficina() {
 }
 
 const nome = (
-  <Suspense fallback={<span className="inline-block h-5 w-32 animate-pulse rounded bg-gray-200" />}>
+  <Suspense fallback={<span className="inline-block h-5 w-32 animate-pulse rounded bg-white/20" />}>
     <NomeOficina />
   </Suspense>
 );
@@ -21,8 +21,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <NavLateral oficina={nome} />
       <div className="flex-1">
-        <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-4 py-3 md:hidden">
-          <div className="truncate font-bold">{nome}</div>
+        <header className="sticky top-0 z-10 bg-asfalto px-4 py-3 text-white md:hidden">
+          <div className="truncate font-display text-lg font-bold">{nome}</div>
         </header>
         <main className="mx-auto max-w-3xl px-4 pt-4 pb-24 md:py-8">{children}</main>
       </div>

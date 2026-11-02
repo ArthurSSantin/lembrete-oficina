@@ -56,16 +56,16 @@ export function FormAtendimento({
   return (
     <form ref={formRef} onSubmit={aoEnviar} className="space-y-5">
       {estado?.ok && (
-        <p className="rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
-          ✅ {estado.ok}
+        <p role="status" className="rounded-lg bg-verde-claro p-3 text-sm font-semibold text-verde">
+          {estado.ok}
         </p>
       )}
       {estado?.erro && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{estado.erro}</p>
+        <p role="alert" className="rounded-lg bg-vermelho-claro p-3 text-sm text-vermelho">{estado.erro}</p>
       )}
 
       <fieldset className="cartao space-y-4">
-        <legend className="px-1 text-sm font-semibold text-gray-500">Veículo</legend>
+        <legend className="px-1 text-sm font-semibold text-tinta-2">Veículo</legend>
         <div>
           <label className="rotulo" htmlFor="placa">Placa</label>
           <input
@@ -75,10 +75,13 @@ export function FormAtendimento({
             autoCapitalize="characters"
             autoComplete="off"
             placeholder="ABC1D23"
-            className="campo font-mono uppercase"
+            className="campo font-display text-lg font-bold tracking-wider uppercase"
             onBlur={(e) => aoSairDaPlaca(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value.replace(/[^a-zA-Z0-9]/g, "").length === 7) aoSairDaPlaca(e.target.value);
+            }}
           />
-          {aviso && <p className="mt-1 text-xs text-blue-700">{aviso}</p>}
+          {aviso && <p className="mt-1 text-xs text-verde">{aviso}</p>}
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
@@ -108,7 +111,7 @@ export function FormAtendimento({
       </fieldset>
 
       <fieldset className="cartao space-y-4">
-        <legend className="px-1 text-sm font-semibold text-gray-500">Cliente</legend>
+        <legend className="px-1 text-sm font-semibold text-tinta-2">Cliente</legend>
         <div>
           <label className="rotulo" htmlFor="nome">Nome</label>
           <input
@@ -135,11 +138,11 @@ export function FormAtendimento({
             onChange={(e) => setCampos({ ...campos, whatsapp: e.target.value })}
           />
         </div>
-        <label className="flex items-start gap-3 text-sm text-gray-700">
+        <label className="flex items-start gap-3 text-sm text-tinta-2">
           <input
             type="checkbox"
             name="consentimento"
-            className="mt-0.5 h-5 w-5"
+            className="mt-0.5 h-5 w-5 accent-tinta"
             checked={campos.consentimento}
             onChange={(e) => setCampos({ ...campos, consentimento: e.target.checked })}
           />
@@ -148,7 +151,7 @@ export function FormAtendimento({
       </fieldset>
 
       <fieldset className="cartao space-y-4">
-        <legend className="px-1 text-sm font-semibold text-gray-500">Serviço feito</legend>
+        <legend className="px-1 text-sm font-semibold text-tinta-2">Serviço feito</legend>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="rotulo" htmlFor="data">Data</label>
@@ -163,9 +166,9 @@ export function FormAtendimento({
           {tipos.map((t) => (
             <label
               key={t.id}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-3 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"
+              className="flex items-center gap-3 rounded-lg border border-linha px-3 py-3 has-[:checked]:border-tinta has-[:checked]:bg-fundo"
             >
-              <input type="checkbox" name="tipos" value={t.id} className="h-5 w-5" />
+              <input type="checkbox" name="tipos" value={t.id} className="h-5 w-5 accent-tinta" />
               <span>{t.nome}</span>
             </label>
           ))}
@@ -173,9 +176,51 @@ export function FormAtendimento({
         <div>
           <label className="rotulo" htmlFor="valor">Valor total (opcional)</label>
           <input id="valor" name="valor" inputMode="decimal" placeholder="R$ 0,00" className="campo" />
-          <p className="mt-1 text-xs text-gray-500">Usado para mostrar quanto os retornos renderam.</p>
+          <p className="mt-1 text-xs text-tinta-3">Usado para mostrar quanto os retornos renderam.</p>
         </div>
       </fieldset>
+
+      <details className="cartao group">
+        <summary className="cursor-pointer list-none">
+          <span className="font-semibold">O cliente deixou algum serviço para depois?</span>
+          <span className="block text-sm text-tinta-2">
+            Marque o que foi recomendado e não foi feito. O sistema lembra você de chamar o cliente.
+          </span>
+        </summary>
+        <div className="mt-4 space-y-3">
+          {tipos.map((t) => (
+            <label
+              key={t.id}
+              className="flex items-center gap-3 rounded-lg border border-linha px-3 py-3 has-[:checked]:border-sinal has-[:checked]:bg-sinal-claro"
+            >
+              <input type="checkbox" name="recomendados" value={t.id} className="h-5 w-5 accent-tinta" />
+              <span>{t.nome}</span>
+            </label>
+          ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="rotulo" htmlFor="dias_recomendado">Chamar em</label>
+              <select id="dias_recomendado" name="dias_recomendado" defaultValue="30" className="campo">
+                <option value="7">7 dias</option>
+                <option value="15">15 dias</option>
+                <option value="30">30 dias</option>
+                <option value="60">60 dias</option>
+                <option value="90">90 dias</option>
+              </select>
+            </div>
+            <div>
+              <label className="rotulo" htmlFor="valor_recomendado">Orçamento</label>
+              <input
+                id="valor_recomendado"
+                name="valor_recomendado"
+                inputMode="decimal"
+                placeholder="R$ 0,00"
+                className="campo"
+              />
+            </div>
+          </div>
+        </div>
+      </details>
 
       <button type="submit" disabled={pendente} className="botao sticky bottom-20 w-full shadow-lg md:static">
         {pendente ? "Salvando..." : "Salvar atendimento"}

@@ -4,13 +4,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getContexto } from "@/lib/oficina";
+import type { LinhaImportada } from "@/lib/importacao";
 import type { TipoServico } from "@/lib/types";
 import {
   calcularProxima,
   estimarKmPorDia,
   hojeISO,
+  lerDecimal,
   normalizarPlaca,
+  somarDias,
   normalizarWhatsapp,
+  whatsappValido,
 } from "@/lib/util";
 
 export type Estado = { erro?: string; ok?: string } | null;
@@ -25,9 +29,7 @@ function inteiro(form: FormData, campo: string): number | null {
 }
 
 function decimal(form: FormData, campo: string): number | null {
-  const v = texto(form, campo).replace(/\./g, "").replace(",", ".");
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : null;
+  return lerDecimal(texto(form, campo));
 }
 
 // ===================== LOGIN =====================
@@ -87,6 +89,8 @@ export async function salvarOficina(_: Estado, form: FormData): Promise<Estado> 
       nome: texto(form, "nome") || oficina.nome,
       whatsapp: normalizarWhatsapp(texto(form, "whatsapp")) || null,
       assinatura_texto: texto(form, "assinatura") || null,
+      link_avaliacao: texto(form, "link_avaliacao") || null,
+      dias_sumido: Math.max(60, inteiro(form, "dias_sumido") ?? oficina.dias_sumido),
     })
     .eq("id", oficina.id);
   if (error) return { erro: error.message };
@@ -102,6 +106,9 @@ export async function salvarTipoServico(form: FormData) {
     intervalo_dias: inteiro(form, "intervalo_dias"),
     intervalo_km: inteiro(form, "intervalo_km"),
     ativo: form.get("ativo") === "on",
+    ...(form.has("modelo_mensagem") && {
+      modelo_mensagem: texto(form, "modelo_mensagem") || null,
+    }),
   };
   if (!dados.nome) return;
 
@@ -133,11 +140,19 @@ export async function registrarAtendimento(
   const km = inteiro(form, "km");
   const valorTotal = decimal(form, "valor");
   const tiposIds = form.getAll("tipos").map(String).filter(Boolean);
+  const recomendadosIds = form
+    .getAll("recomendados")
+    .map(String)
+    .filter((id) => id && !tiposIds.includes(id));
+  const diasRecomendado = Math.min(365, Math.max(1, inteiro(form, "dias_recomendado") ?? 30));
+  const valorRecomendado = decimal(form, "valor_recomendado");
 
   if (placa.length < 7) return { erro: "Placa inválida." };
   if (!nome) return { erro: "Informe o nome do cliente." };
-  if (whatsapp.length < 12) return { erro: "WhatsApp inválido. Use DDD + número." };
-  if (tiposIds.length === 0) return { erro: "Marque pelo menos um serviço." };
+  if (!whatsappValido(whatsapp)) return { erro: "WhatsApp inválido. Use DDD + número." };
+  if (tiposIds.length === 0 && recomendadosIds.length === 0) {
+    return { erro: "Marque pelo menos um serviço feito ou recomendado." };
+  }
 
   // 1. Cliente: procura pelo WhatsApp, senão cria
   let clienteId: string;
@@ -208,14 +223,23 @@ export async function registrarAtendimento(
   const { data: tipos } = await supabase
     .from("tipos_servico")
     .select("id, nome, intervalo_dias, intervalo_km")
-    .in("id", tiposIds)
+    .in("id", [...tiposIds, ...recomendadosIds])
     .returns<Pick<TipoServico, "id" | "nome" | "intervalo_dias" | "intervalo_km">[]>();
 
   const valorPorServico =
-    valorTotal != null ? Math.round((valorTotal / tiposIds.length) * 100) / 100 : null;
+    valorTotal != null && tiposIds.length
+      ? Math.round((valorTotal / tiposIds.length) * 100) / 100
+      : null;
 
   // 4. Um registro por serviço feito
-  for (const tipo of tipos ?? []) {
+  const feitos = (tipos ?? []).filter((t) => tiposIds.includes(t.id));
+  const recomendados = (tipos ?? []).filter((t) => recomendadosIds.includes(t.id));
+  const valorPorRecomendado =
+    valorRecomendado != null && recomendados.length
+      ? Math.round((valorRecomendado / recomendados.length) * 100) / 100
+      : null;
+
+  for (const tipo of feitos) {
     const { proximaData, proximaKm } = calcularProxima({
       data,
       km,
@@ -258,8 +282,44 @@ export async function registrarAtendimento(
     }
   }
 
+  // 5. Serviços recomendados que o cliente não quis fazer agora:
+  // viram um lembrete em poucos dias. Substituem recomendações antigas do mesmo serviço.
+  for (const tipo of recomendados) {
+    const antigos = (historico ?? []).filter(
+      (s) => s.tipo_servico_id === tipo.id && s.lembrete_status === "pendente",
+    );
+    const { data: novo, error } = await supabase
+      .from("servicos")
+      .insert({
+        oficina_id: oficina.id,
+        veiculo_id: veiculoId,
+        tipo_servico_id: tipo.id,
+        origem: "recomendado",
+        data,
+        km,
+        valor: valorPorRecomendado,
+        proxima_data: somarDias(data, diasRecomendado),
+      })
+      .select("id")
+      .single();
+    if (error || !novo) return { erro: "Erro ao salvar recomendação: " + error?.message };
+    if (antigos.length) {
+      await supabase
+        .from("servicos")
+        .update({ lembrete_status: "substituido", retorno_servico_id: novo.id })
+        .in(
+          "id",
+          antigos.map((a) => a.id),
+        );
+    }
+  }
+
   revalidatePath("/", "layout");
-  return { ok: `Atendimento do ${placa} salvo.` };
+  const partes = [
+    feitos.length && `${feitos.length} serviço(s)`,
+    recomendados.length && `${recomendados.length} recomendação(ões)`,
+  ].filter(Boolean);
+  return { ok: `${placa} salvo: ${partes.join(" e ")}.` };
 }
 
 export async function buscarPorPlaca(placaEntrada: string) {
@@ -314,4 +374,306 @@ export async function reabrirLembrete(servicoId: string) {
     .eq("id", servicoId)
     .in("lembrete_status", ["contatado", "ignorado"]);
   revalidatePath("/");
+}
+
+/** Joga o lembrete para daqui a alguns dias (cliente pediu para chamar depois). */
+export async function adiarLembrete(servicoId: string, dias: number) {
+  const { supabase } = await getContexto();
+  const n = Math.min(365, Math.max(1, Math.round(dias)));
+  await supabase
+    .from("servicos")
+    .update({
+      proxima_data: somarDias(hojeISO(), n),
+      lembrete_status: "pendente",
+      contatado_em: null,
+    })
+    .eq("id", servicoId)
+    .in("lembrete_status", ["pendente", "contatado"]);
+  revalidatePath("/", "layout");
+}
+
+/** Cliente pediu para não receber mais mensagens (LGPD). Pode ser desfeito. */
+export async function definirNaoContatar(clienteId: string, naoContatar: boolean) {
+  const { supabase } = await getContexto();
+  await supabase.from("clientes").update({ nao_contatar: naoContatar }).eq("id", clienteId);
+  if (naoContatar) {
+    const { data: veiculos } = await supabase
+      .from("veiculos")
+      .select("id")
+      .eq("cliente_id", clienteId);
+    const ids = (veiculos ?? []).map((v) => v.id);
+    if (ids.length) {
+      await supabase
+        .from("servicos")
+        .update({ lembrete_status: "ignorado" })
+        .in("veiculo_id", ids)
+        .eq("lembrete_status", "pendente");
+    }
+  }
+  revalidatePath("/", "layout");
+}
+
+/** Marca a visita (carro + dia) como já agradecida no pós-venda. */
+export async function marcarPosvenda(veiculoId: string, data: string) {
+  const { supabase } = await getContexto();
+  await supabase
+    .from("servicos")
+    .update({ posvenda_em: new Date().toISOString() })
+    .eq("veiculo_id", veiculoId)
+    .eq("data", data)
+    .is("posvenda_em", null);
+  revalidatePath("/");
+}
+
+/** Marca que o cliente sumido foi chamado (some da lista por 90 dias). */
+export async function marcarReativacao(clienteId: string) {
+  const { supabase } = await getContexto();
+  await supabase
+    .from("clientes")
+    .update({ reativacao_em: new Date().toISOString() })
+    .eq("id", clienteId);
+  revalidatePath("/");
+}
+
+export async function salvarModelos(_: Estado, form: FormData): Promise<Estado> {
+  const { supabase, oficina } = await getContexto();
+  const { error } = await supabase
+    .from("oficinas")
+    .update({
+      modelo_lembrete: texto(form, "modelo_lembrete") || null,
+      modelo_recomendado: texto(form, "modelo_recomendado") || null,
+      modelo_posvenda: texto(form, "modelo_posvenda") || null,
+      modelo_reativacao: texto(form, "modelo_reativacao") || null,
+    })
+    .eq("id", oficina.id);
+  if (error) return { erro: error.message };
+  revalidatePath("/config");
+  return { ok: "Mensagens salvas." };
+}
+
+// ===================== IMPORTAÇÃO =====================
+
+function pedacos<T>(lista: T[], tamanho: number): T[][] {
+  const r: T[][] = [];
+  for (let i = 0; i < lista.length; i += tamanho) r.push(lista.slice(i, i + tamanho));
+  return r;
+}
+
+function chaveNome(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+export type ResultadoImportacao = {
+  erro?: string;
+  clientesNovos?: number;
+  veiculosNovos?: number;
+  servicos?: number;
+  repetidos?: number;
+  ignoradas?: { linha: number; motivo: string }[];
+};
+
+/**
+ * Importa clientes, carros e o último serviço de uma planilha.
+ * Em lote: poucas consultas, mesmo com centenas de linhas.
+ */
+export async function importarClientes(
+  linhas: LinhaImportada[],
+  autorizaram: boolean,
+): Promise<ResultadoImportacao> {
+  const { supabase, oficina } = await getContexto();
+  if (!Array.isArray(linhas) || linhas.length === 0) return { erro: "A planilha está vazia." };
+  if (linhas.length > 2000) return { erro: "Importe no máximo 2.000 linhas por vez." };
+
+  const ignoradas: { linha: number; motivo: string }[] = [];
+  const validas = linhas
+    .map((l, i) => ({
+      n: i + 2, // linha 1 é o cabeçalho
+      nome: String(l.nome ?? "").trim(),
+      whatsapp: normalizarWhatsapp(String(l.whatsapp ?? "")),
+      placa: normalizarPlaca(String(l.placa ?? "")),
+      modelo: String(l.modelo ?? "").trim() || null,
+      ano: parseInt(String(l.ano ?? "").replace(/\D/g, ""), 10) || null,
+      servico: String(l.servico ?? "").trim(),
+      data: /^\d{4}-\d{2}-\d{2}$/.test(String(l.data ?? "")) ? String(l.data) : "",
+      km: parseInt(String(l.km ?? "").replace(/\D/g, ""), 10) || null,
+      valor: lerDecimal(String(l.valor ?? "")),
+    }))
+    .filter((l) => {
+      if (!l.nome) ignoradas.push({ linha: l.n, motivo: "sem nome" });
+      else if (!whatsappValido(l.whatsapp)) ignoradas.push({ linha: l.n, motivo: "WhatsApp inválido" });
+      else return true;
+      return false;
+    });
+
+  if (validas.length === 0) return { erro: "Nenhuma linha válida.", ignoradas };
+
+  // 1. Clientes: os que já existem ficam como estão; os novos são criados.
+  const zaps = [...new Set(validas.map((l) => l.whatsapp))];
+  const idPorZap = new Map<string, string>();
+  for (const p of pedacos(zaps, 150)) {
+    const { data } = await supabase
+      .from("clientes")
+      .select("id, whatsapp")
+      .eq("oficina_id", oficina.id)
+      .in("whatsapp", p);
+    for (const c of data ?? []) idPorZap.set(c.whatsapp, c.id);
+  }
+  const agora = new Date().toISOString();
+  const novosClientes = zaps
+    .filter((z) => !idPorZap.has(z))
+    .map((z) => ({
+      oficina_id: oficina.id,
+      whatsapp: z,
+      nome: validas.find((l) => l.whatsapp === z)!.nome,
+      consentimento: autorizaram,
+      consentimento_em: autorizaram ? agora : null,
+    }));
+  for (const p of pedacos(novosClientes, 300)) {
+    const { data, error } = await supabase.from("clientes").insert(p).select("id, whatsapp");
+    if (error) return { erro: "Erro ao salvar clientes: " + error.message };
+    for (const c of data ?? []) idPorZap.set(c.whatsapp, c.id);
+  }
+
+  // 2. Veículos
+  const comPlaca = validas.filter((l) => l.placa.length >= 7);
+  const placas = [...new Set(comPlaca.map((l) => l.placa))];
+  const idPorPlaca = new Map<string, string>();
+  for (const p of pedacos(placas, 150)) {
+    const { data } = await supabase
+      .from("veiculos")
+      .select("id, placa")
+      .eq("oficina_id", oficina.id)
+      .in("placa", p);
+    for (const v of data ?? []) idPorPlaca.set(v.placa, v.id);
+  }
+  const novosVeiculos = placas
+    .filter((pl) => !idPorPlaca.has(pl))
+    .map((pl) => {
+      const l = comPlaca.find((x) => x.placa === pl)!;
+      return {
+        oficina_id: oficina.id,
+        cliente_id: idPorZap.get(l.whatsapp)!,
+        placa: pl,
+        modelo: l.modelo,
+        ano: l.ano,
+      };
+    });
+  for (const p of pedacos(novosVeiculos, 300)) {
+    const { data, error } = await supabase.from("veiculos").insert(p).select("id, placa");
+    if (error) return { erro: "Erro ao salvar veículos: " + error.message };
+    for (const v of data ?? []) idPorPlaca.set(v.placa, v.id);
+  }
+
+  // 3. Último serviço de cada linha, com o lembrete calculado
+  const { data: tipos } = await supabase
+    .from("tipos_servico")
+    .select("id, nome, intervalo_dias, intervalo_km")
+    .eq("oficina_id", oficina.id)
+    .returns<Pick<TipoServico, "id" | "nome" | "intervalo_dias" | "intervalo_km">[]>();
+  // Nome igual vale; nome parcial só quando aponta para um único serviço.
+  const acharTipo = (nome: string) => {
+    const k = chaveNome(nome);
+    if (!k) return undefined;
+    const exato = (tipos ?? []).find((t) => chaveNome(t.nome) === k);
+    if (exato) return exato;
+    const parciais = (tipos ?? []).filter(
+      (t) => chaveNome(t.nome).includes(k) || k.includes(chaveNome(t.nome)),
+    );
+    return parciais.length === 1 ? parciais[0] : undefined;
+  };
+
+  // Serviços que já existem nesses carros: evita duplicar ao reimportar
+  // e permite substituir o lembrete antigo do mesmo serviço.
+  const veiculoIds = [...new Set(comPlaca.map((l) => idPorPlaca.get(l.placa)!))];
+  const existentes: { id: string; veiculo_id: string; tipo_servico_id: string; data: string; lembrete_status: string }[] = [];
+  for (const p of pedacos(veiculoIds, 150)) {
+    const { data } = await supabase
+      .from("servicos")
+      .select("id, veiculo_id, tipo_servico_id, data, lembrete_status")
+      .in("veiculo_id", p);
+    existentes.push(...(data ?? []));
+  }
+  const jaTem = new Set(existentes.map((e) => `${e.veiculo_id}|${e.tipo_servico_id}|${e.data}`));
+  const hoje = hojeISO();
+
+  const servicos = [];
+  let repetidos = 0;
+  for (const l of comPlaca) {
+    if (!l.servico && !l.data) continue;
+    const tipo = acharTipo(l.servico);
+    const motivo = !l.data
+      ? "serviço sem data ou com data inválida"
+      : l.data > hoje
+        ? "data no futuro"
+        : !tipo
+          ? `serviço "${l.servico}" não bate com um único serviço de Ajustes`
+          : null;
+    if (motivo || !tipo) {
+      ignoradas.push({ linha: l.n, motivo: `${motivo} (cliente e carro foram salvos)` });
+      continue;
+    }
+    const veiculoId = idPorPlaca.get(l.placa)!;
+    const chave = `${veiculoId}|${tipo.id}|${l.data}`;
+    if (jaTem.has(chave)) {
+      repetidos++;
+      continue;
+    }
+    jaTem.add(chave);
+    const { proximaData, proximaKm } = calcularProxima({
+      data: l.data,
+      km: l.km,
+      intervaloDias: tipo.intervalo_dias,
+      intervaloKm: tipo.intervalo_km,
+      kmPorDia: null,
+    });
+    servicos.push({
+      oficina_id: oficina.id,
+      veiculo_id: veiculoId,
+      tipo_servico_id: tipo.id,
+      data: l.data,
+      km: l.km,
+      valor: l.valor,
+      proxima_data: proximaData,
+      proxima_km: proximaKm,
+      // Visita antiga importada não pede pós-venda.
+      posvenda_em: agora,
+    });
+  }
+  // Só o serviço mais recente de cada carro/tipo fica com lembrete em aberto.
+  const maisRecente = new Map<string, string>();
+  for (const sv of [...existentes, ...servicos]) {
+    const k = `${sv.veiculo_id}|${sv.tipo_servico_id}`;
+    if (!maisRecente.has(k) || sv.data > maisRecente.get(k)!) maisRecente.set(k, sv.data);
+  }
+  const novos = servicos.map((sv) =>
+    sv.data < maisRecente.get(`${sv.veiculo_id}|${sv.tipo_servico_id}`)!
+      ? { ...sv, lembrete_status: "substituido" }
+      : sv,
+  );
+  for (const p of pedacos(novos, 300)) {
+    const { error } = await supabase.from("servicos").insert(p);
+    if (error) return { erro: "Erro ao salvar serviços: " + error.message };
+  }
+  const antigos = existentes.filter(
+    (e) =>
+      e.lembrete_status === "pendente" &&
+      e.data < maisRecente.get(`${e.veiculo_id}|${e.tipo_servico_id}`)!,
+  );
+  for (const p of pedacos(antigos.map((a) => a.id), 150)) {
+    await supabase.from("servicos").update({ lembrete_status: "substituido" }).in("id", p);
+  }
+  for (const l of validas) {
+    if (l.placa.length < 7 && (l.placa || l.servico)) {
+      ignoradas.push({ linha: l.n, motivo: "placa ausente ou inválida (cliente foi salvo)" });
+    }
+  }
+
+  revalidatePath("/", "layout");
+  return {
+    clientesNovos: novosClientes.length,
+    veiculosNovos: novosVeiculos.length,
+    servicos: novos.filter((sv) => !("lembrete_status" in sv)).length,
+    repetidos,
+    ignoradas: ignoradas.sort((a, b) => a.linha - b.linha),
+  };
 }

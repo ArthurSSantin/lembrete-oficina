@@ -15,7 +15,7 @@ export function FormOnboarding() {
         <label className="rotulo" htmlFor="whatsapp">WhatsApp da oficina</label>
         <input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" placeholder="(11) 99999-9999" className="campo" />
       </div>
-      {estado?.erro && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{estado.erro}</p>}
+      {estado?.erro && <p className="rounded-lg bg-vermelho-claro p-3 text-sm text-vermelho">{estado.erro}</p>}
       <button type="submit" disabled={pendente} className="botao w-full">
         {pendente ? "Criando..." : "Começar"}
       </button>

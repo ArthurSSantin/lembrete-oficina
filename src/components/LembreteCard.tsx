@@ -1,12 +1,30 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ignorarLembrete, marcarContatado, reabrirLembrete } from "@/app/actions";
-import type { Lembrete } from "@/lib/types";
-import { formatarData, formatarPlaca, formatarWhatsapp, linkWhatsapp } from "@/lib/util";
+import {
+  adiarLembrete,
+  definirNaoContatar,
+  ignorarLembrete,
+  marcarContatado,
+  marcarPosvenda,
+  marcarReativacao,
+  reabrirLembrete,
+} from "@/app/actions";
+import type { Lembrete, Posvenda, Sumido } from "@/lib/types";
+import { formatarData, plural } from "@/lib/util";
+import { Placa } from "./Placa";
+import { ContatoCard } from "./ContatoCard";
 
-function plural(n: number, palavra: string) {
-  return `${n} ${palavra}${n > 1 ? "s" : ""}`;
+function nomeCarro(v: { modelo: string | null; ano: number | null }) {
+  return [v.modelo, v.ano].filter(Boolean).join(" ") || "Veículo";
+}
+
+/** Adesivo de troca de óleo: quando vence. */
+function prazo(atrasoDias: number) {
+  if (atrasoDias > 0) {
+    return { texto: `${plural(atrasoDias, "dia")} de atraso`, cor: "bg-vermelho-claro text-vermelho" };
+  }
+  if (atrasoDias === 0) return { texto: "Vence hoje", cor: "bg-sinal text-tinta" };
+  return { texto: `Em ${plural(-atrasoDias, "dia")}`, cor: "bg-fundo text-tinta-2" };
 }
 
 export function LembreteCard({
@@ -16,140 +34,97 @@ export function LembreteCard({
   lembrete: Lembrete;
   atrasoDias: number;
 }) {
-  const [mensagem, setMensagem] = useState<string | null>(null);
-  const [origem, setOrigem] = useState<"ia" | "padrao" | null>(null);
-  const [gerando, setGerando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [pendente, startTransition] = useTransition();
-
   const v = lembrete.veiculos;
   const c = v.clientes;
-  const contatado = lembrete.lembrete_status === "contatado";
-
-  async function gerar() {
-    setGerando(true);
-    setErro(null);
-    try {
-      const r = await fetch("/api/mensagem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ servicoId: lembrete.id }),
-      });
-      if (!r.ok) throw new Error();
-      const dados = (await r.json()) as { texto: string; origem: "ia" | "padrao" };
-      setMensagem(dados.texto);
-      setOrigem(dados.origem);
-    } catch {
-      setErro("Não foi possível gerar a mensagem. Tente de novo.");
-    } finally {
-      setGerando(false);
-    }
-  }
-
-  function enviar() {
-    if (!mensagem) return;
-    window.open(linkWhatsapp(c.whatsapp, mensagem), "_blank", "noopener");
-    startTransition(() => marcarContatado(lembrete.id));
-  }
-
-  const etiqueta =
-    atrasoDias > 0
-      ? { texto: `${plural(atrasoDias, "dia")} de atraso`, cor: "bg-red-100 text-red-700" }
-      : atrasoDias === 0
-        ? { texto: "Vence hoje", cor: "bg-amber-100 text-amber-800" }
-        : { texto: `Em ${plural(-atrasoDias, "dia")}`, cor: "bg-blue-100 text-blue-700" };
+  const recomendado = lembrete.origem === "recomendado";
 
   return (
-    <div className={`cartao space-y-3 ${pendente ? "opacity-60" : ""}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold">{c.nome}</p>
-          <p className="text-sm text-gray-600">
-            {[v.modelo, v.ano].filter(Boolean).join(" ") || "Veículo"} · {formatarPlaca(v.placa)}
+    <ContatoCard
+      nome={c.nome}
+      whatsapp={c.whatsapp}
+      consentimento={c.consentimento}
+      linha={<><Placa placa={v.placa} />{nomeCarro(v)}</>}
+      etiqueta={prazo(atrasoDias)}
+      detalhe={
+        recomendado ? (
+          <p>
+            <span className="font-semibold">{lembrete.tipos_servico.nome}</span>
+            <span className="text-tinta-2">
+              {" "}
+              foi recomendado em {formatarData(lembrete.data)} e o cliente preferiu deixar para depois.
+            </span>
           </p>
-        </div>
-        {contatado ? (
-          <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-            Chamado
-          </span>
         ) : (
-          <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${etiqueta.cor}`}>
-            {etiqueta.texto}
-          </span>
-        )}
-      </div>
+          <p>
+            <span className="font-semibold">{lembrete.tipos_servico.nome}</span>
+            <span className="text-tinta-2">
+              {" "}
+              feito em {formatarData(lembrete.data)}
+              {lembrete.km ? ` com ${lembrete.km.toLocaleString("pt-BR")} km` : ""}
+              {lembrete.proxima_km ? `. Próxima com ${lembrete.proxima_km.toLocaleString("pt-BR")} km` : ""}
+            </span>
+          </p>
+        )
+      }
+      pedido={{ tipo: "lembrete", servicoId: lembrete.id }}
+      aoEnviar={() => marcarContatado(lembrete.id)}
+      feito={
+        lembrete.lembrete_status === "contatado"
+          ? { rotulo: "Chamado", desfazer: () => reabrirLembrete(lembrete.id) }
+          : undefined
+      }
+      acoes={[
+        { rotulo: "Lembrar daqui a 7 dias", executar: () => adiarLembrete(lembrete.id, 7) },
+        { rotulo: "Lembrar daqui a 30 dias", executar: () => adiarLembrete(lembrete.id, 30) },
+        { rotulo: "Não lembrar este serviço", executar: () => ignorarLembrete(lembrete.id) },
+        {
+          rotulo: "Cliente não quer mensagens",
+          executar: () => definirNaoContatar(c.id, true),
+          perigo: true,
+        },
+      ]}
+    />
+  );
+}
 
-      <p className="text-sm">
-        <span className="font-medium">{lembrete.tipos_servico.nome}</span>
-        <span className="text-gray-600">
-          {" "}
-          · última em {formatarData(lembrete.data)}
-          {lembrete.km ? ` com ${lembrete.km.toLocaleString("pt-BR")} km` : ""}
-        </span>
-      </p>
+export function PosvendaCard({ visita }: { visita: Posvenda }) {
+  const { cliente: c, veiculo: v } = visita;
+  return (
+    <ContatoCard
+      nome={c.nome}
+      whatsapp={c.whatsapp}
+      consentimento={c.consentimento}
+      linha={<><Placa placa={v.placa} />{nomeCarro(v)}</>}
+      etiqueta={{ texto: `Veio em ${formatarData(visita.data).slice(0, 5)}`, cor: "bg-fundo text-tinta-2" }}
+      detalhe={<p className="text-tinta-2">{visita.servicos.join(", ")}</p>}
+      pedido={{ tipo: "posvenda", veiculoId: visita.veiculo_id, data: visita.data }}
+      aoEnviar={() => marcarPosvenda(visita.veiculo_id, visita.data)}
+      acoes={[
+        { rotulo: "Não mandar pós-venda", executar: () => marcarPosvenda(visita.veiculo_id, visita.data) },
+      ]}
+    />
+  );
+}
 
-      {!c.consentimento && (
-        <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-          Cliente sem autorização registrada para receber mensagens.
-        </p>
-      )}
-
-      {contatado ? (
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={`https://wa.me/${c.whatsapp}`}
-            target="_blank"
-            rel="noopener"
-            className="botao-sec flex-1"
-          >
-            Abrir conversa
-          </a>
-          <button
-            onClick={() => startTransition(() => reabrirLembrete(lembrete.id))}
-            className="botao-sec"
-          >
-            Desfazer
-          </button>
-        </div>
-      ) : mensagem === null ? (
-        <div className="flex gap-2">
-          <button onClick={gerar} disabled={gerando} className="botao flex-1">
-            {gerando ? "Escrevendo..." : "💬 Preparar mensagem"}
-          </button>
-          <button
-            onClick={() => startTransition(() => ignorarLembrete(lembrete.id))}
-            className="botao-sec"
-            title="Não lembrar mais este serviço"
-          >
-            Ignorar
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <textarea
-            value={mensagem}
-            onChange={(e) => setMensagem(e.target.value)}
-            rows={6}
-            className="campo text-sm"
-          />
-          {origem === "padrao" && (
-            <p className="text-xs text-gray-500">
-              Mensagem padrão (IA não configurada ou indisponível).
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button onClick={enviar} className="botao flex-1 !bg-green-600">
-              Enviar no WhatsApp
-            </button>
-            <button onClick={gerar} disabled={gerando} className="botao-sec" title="Escrever outra">
-              {gerando ? "..." : "↻"}
-            </button>
-          </div>
-          <p className="text-xs text-gray-500">Para {formatarWhatsapp(c.whatsapp)}</p>
-        </div>
-      )}
-
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
-    </div>
+export function SumidoCard({ cliente: s }: { cliente: Sumido }) {
+  return (
+    <ContatoCard
+      nome={s.nome}
+      whatsapp={s.whatsapp}
+      consentimento={s.consentimento}
+      linha={<><Placa placa={s.placa} />{s.veiculo || "Veículo"}</>}
+      etiqueta={{ texto: `Última vez em ${formatarData(s.ultima_visita)}`, cor: "bg-fundo text-tinta-2" }}
+      detalhe={<p className="text-tinta-2">Último serviço: {s.ultimo_servico}</p>}
+      pedido={{ tipo: "reativacao", clienteId: s.cliente_id }}
+      aoEnviar={() => marcarReativacao(s.cliente_id)}
+      acoes={[
+        { rotulo: "Tirar da lista por 90 dias", executar: () => marcarReativacao(s.cliente_id) },
+        {
+          rotulo: "Cliente não quer mensagens",
+          executar: () => definirNaoContatar(s.cliente_id, true),
+          perigo: true,
+        },
+      ]}
+    />
   );
 }

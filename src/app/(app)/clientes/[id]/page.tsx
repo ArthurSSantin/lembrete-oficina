@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContexto } from "@/lib/oficina";
 import type { Cliente, Servico, Veiculo } from "@/lib/types";
-import { formatarData, formatarMoeda, formatarPlaca, formatarWhatsapp } from "@/lib/util";
+import { BotaoNaoContatar } from "@/components/BotaoNaoContatar";
+import { Placa } from "@/components/Placa";
+import { formatarData, formatarMoeda, formatarWhatsapp } from "@/lib/util";
 
 type ServicoLinha = Servico & { tipos_servico: { nome: string } };
 type VeiculoComServicos = Veiculo & { servicos: ServicoLinha[] };
@@ -14,6 +16,9 @@ const STATUS: Record<Servico["lembrete_status"], string> = {
   ignorado: "Lembrete ignorado",
   substituido: "Refeito",
 };
+
+// Depende do usuário logado: renderiza na hora, atrás do loading.tsx.
+export const instant = false;
 
 export default async function ClientePage({ params }: PageProps<"/clientes/[id]">) {
   const { id } = await params;
@@ -29,17 +34,19 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
 
   return (
     <div className="space-y-4">
-      <Link href="/clientes" className="text-sm text-blue-600">
-        ← Clientes
+      <Link href="/clientes" className="text-sm text-tinta underline underline-offset-2">
+        Voltar para Clientes
       </Link>
       <div className="cartao">
-        <h1 className="text-2xl font-bold">{cliente.nome}</h1>
-        <p className="text-gray-600">{formatarWhatsapp(cliente.whatsapp)}</p>
+        <h1 className="text-3xl font-bold">{cliente.nome}</h1>
+        <p className="text-tinta-2">{formatarWhatsapp(cliente.whatsapp)}</p>
         <p className="mt-1 text-sm">
-          {cliente.consentimento ? (
-            <span className="text-green-700">✓ Autorizou receber lembretes</span>
+          {cliente.nao_contatar ? (
+            <span className="text-vermelho">Pediu para não receber mensagens</span>
+          ) : cliente.consentimento ? (
+            <span className="text-verde">✓ Autorizou receber lembretes</span>
           ) : (
-            <span className="text-amber-700">Sem autorização registrada</span>
+            <span className="text-sinal-escuro">Sem autorização registrada</span>
           )}
         </p>
         <a
@@ -50,31 +57,41 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
         >
           Abrir no WhatsApp
         </a>
+        <div className="mt-2">
+          <BotaoNaoContatar clienteId={cliente.id} ativo={cliente.nao_contatar} />
+        </div>
       </div>
 
       {cliente.veiculos.map((v) => {
         const servicos = [...v.servicos].sort((a, b) => b.data.localeCompare(a.data));
         return (
           <div key={v.id} className="cartao">
-            <h2 className="text-lg font-semibold">
-              {[v.modelo, v.ano].filter(Boolean).join(" ") || "Veículo"}{" "}
-              <span className="font-mono text-gray-500">{formatarPlaca(v.placa)}</span>
+            <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold">
+              <Placa placa={v.placa} />
+              {[v.modelo, v.ano].filter(Boolean).join(" ") || "Veículo"}
             </h2>
-            <ul className="mt-3 divide-y divide-gray-100">
+            <ul className="mt-3 divide-y divide-linha">
               {servicos.map((s) => (
                 <li key={s.id} className="py-2 text-sm">
                   <div className="flex justify-between gap-2">
-                    <span className="font-medium">{s.tipos_servico.nome}</span>
-                    <span className="text-gray-500">{formatarData(s.data)}</span>
+                    <span className="font-medium">
+                      {s.tipos_servico.nome}
+                      {s.origem === "recomendado" && (
+                        <span className="etiqueta ml-2 bg-sinal-claro text-sinal-escuro">
+                          Recomendado
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-tinta-3">{formatarData(s.data)}</span>
                   </div>
-                  <div className="text-gray-600">
+                  <div className="text-tinta-2">
                     {s.km ? `${s.km.toLocaleString("pt-BR")} km` : "km não informado"}
                     {s.valor ? ` · ${formatarMoeda(Number(s.valor))}` : ""}
                     {s.proxima_data && s.lembrete_status === "pendente"
                       ? ` · próximo em ${formatarData(s.proxima_data)}`
                       : ""}
                   </div>
-                  <div className="text-xs text-gray-400">{STATUS[s.lembrete_status]}</div>
+                  <div className="text-xs text-tinta-3">{STATUS[s.lembrete_status]}</div>
                 </li>
               ))}
             </ul>

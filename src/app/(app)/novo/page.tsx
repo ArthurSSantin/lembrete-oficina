@@ -2,6 +2,9 @@ import { FormAtendimento } from "@/components/FormAtendimento";
 import { getContexto } from "@/lib/oficina";
 import { hojeISO } from "@/lib/util";
 
+// Depende do usuário logado: renderiza na hora, atrás do loading.tsx.
+export const instant = false;
+
 export default async function NovoPage() {
   const { supabase, oficina } = await getContexto();
   const { data: tipos } = await supabase
@@ -14,7 +17,7 @@ export default async function NovoPage() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold">Novo atendimento</h1>
-      <p className="mb-4 text-sm text-gray-600">
+      <p className="mb-4 text-sm text-tinta-2">
         Digite a placa: se o carro já veio antes, os dados aparecem sozinhos.
       </p>
       <FormAtendimento tipos={tipos ?? []} hoje={hojeISO()} />
