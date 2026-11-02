@@ -38,12 +38,12 @@ export function NavInferior() {
   );
 }
 
-export function NavLateral({ oficina }: { oficina: string }) {
+export function NavLateral({ oficina }: { oficina: React.ReactNode }) {
   const pathname = usePathname();
   return (
     <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-white md:block">
       <div className="sticky top-0 p-4">
-        <p className="mb-6 truncate px-2 text-lg font-bold">{oficina}</p>
+        <div className="mb-6 truncate px-2 text-lg font-bold">{oficina}</div>
         <ul className="space-y-1">
           {ITENS.map((i) => (
             <li key={i.href}>

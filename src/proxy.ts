@@ -30,9 +30,9 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims confere o token localmente (chaves ES256), sem ir ao servidor de Auth.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
 
   const publica = ROTAS_PUBLICAS.some((r) =>
     request.nextUrl.pathname.startsWith(r),

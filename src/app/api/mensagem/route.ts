@@ -6,9 +6,8 @@ import { diasEntre, formatarData, hojeISO } from "@/lib/util";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
+  const user = auth?.claims;
   if (!user) return NextResponse.json({ erro: "não autenticado" }, { status: 401 });
 
   const { servicoId } = (await request.json()) as { servicoId?: string };
