@@ -33,6 +33,15 @@ test("login com senha errada mostra erro", async ({ page }) => {
   await expect(page.getByText("E-mail ou senha inválidos.")).toBeVisible();
 });
 
+test("login com senha errada mantém o e-mail digitado", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill("ninguem@exemplo.test");
+  await page.getByLabel("Senha").fill("senha-errada-123");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page.getByText("E-mail ou senha inválidos.")).toBeVisible();
+  await expect(page.getByLabel("E-mail")).toHaveValue("ninguem@exemplo.test");
+});
+
 test("Clientes: busca por nome, placa e telefone", async ({ page }) => {
   await criarContaEOficina(page, `Oficina Busca ${Date.now()}`);
   const placa = placaAleatoria();

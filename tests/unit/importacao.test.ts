@@ -58,6 +58,7 @@ describe("lerPlanilha", () => {
         data: "2026-03-15",
         km: "45.000",
         valor: "R$ 250,00",
+        situacao: "",
       },
     ]);
   });

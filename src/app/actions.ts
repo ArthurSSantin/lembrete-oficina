@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { criarAdmin } from "@/lib/supabase/admin";
 import { getContexto } from "@/lib/oficina";
 import type { LinhaImportada } from "@/lib/importacao";
 import type { TipoServico } from "@/lib/types";
@@ -460,7 +462,7 @@ function pedacos<T>(lista: T[], tamanho: number): T[][] {
 }
 
 function chaveNome(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 export type ResultadoImportacao = {
@@ -497,6 +499,7 @@ export async function importarClientes(
       data: /^\d{4}-\d{2}-\d{2}$/.test(String(l.data ?? "")) ? String(l.data) : "",
       km: parseInt(String(l.km ?? "").replace(/\D/g, ""), 10) || null,
       valor: lerDecimal(String(l.valor ?? "")),
+      recomendado: chaveNome(String(l.situacao ?? "")) === "recomendado",
     }))
     .filter((l) => {
       if (!l.nome) ignoradas.push({ linha: l.n, motivo: "sem nome" });
@@ -619,14 +622,17 @@ export async function importarClientes(
       continue;
     }
     jaTem.add(chave);
-    const { proximaData, proximaKm } = calcularProxima({
-      data: l.data,
-      km: l.km,
-      intervaloDias: tipo.intervalo_dias,
-      intervaloKm: tipo.intervalo_km,
-      kmPorDia: null,
-    });
+    const { proximaData, proximaKm } = l.recomendado
+      ? { proximaData: somarDias(l.data, 30), proximaKm: null }
+      : calcularProxima({
+          data: l.data,
+          km: l.km,
+          intervaloDias: tipo.intervalo_dias,
+          intervaloKm: tipo.intervalo_km,
+          kmPorDia: null,
+        });
     servicos.push({
+      origem: l.recomendado ? ("recomendado" as const) : ("feito" as const),
       oficina_id: oficina.id,
       veiculo_id: veiculoId,
       tipo_servico_id: tipo.id,
@@ -676,4 +682,69 @@ export async function importarClientes(
     repetidos,
     ignoradas: ignoradas.sort((a, b) => a.linha - b.linha),
   };
+}
+
+// ===================== SENHA =====================
+
+export async function pedirNovaSenha(_: Estado, form: FormData): Promise<Estado> {
+  const email = texto(form, "email");
+  if (!email.includes("@")) return { erro: "Digite um e-mail válido." };
+  const origem = (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origem}/auth/confirmar?next=/nova-senha`,
+  });
+  // Mesma resposta exista ou não a conta, para não revelar quem é cliente.
+  if (error && error.status === 429) {
+    return { erro: "Muitos pedidos seguidos. Espere alguns minutos e tente de novo." };
+  }
+  return {
+    ok: "Se esse e-mail tiver conta, o link chega em instantes. Confira também o spam.",
+  };
+}
+
+export async function definirNovaSenha(_: Estado, form: FormData): Promise<Estado> {
+  const senha = texto(form, "senha");
+  if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: senha });
+  if (error) {
+    return {
+      erro:
+        error.code === "same_password"
+          ? "A nova senha precisa ser diferente da anterior."
+          : "Não foi possível trocar a senha. Abra o link do e-mail de novo.",
+    };
+  }
+  redirect("/");
+}
+
+// ===================== AVISO DIÁRIO =====================
+
+type InscricaoPush = { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+
+export async function salvarInscricao(inscricao: InscricaoPush): Promise<Estado> {
+  const { supabase, oficina } = await getContexto();
+  const endpoint = inscricao?.endpoint;
+  const p256dh = inscricao?.keys?.p256dh;
+  const auth = inscricao?.keys?.auth;
+  if (!endpoint?.startsWith("https://") || !p256dh || !auth) return { erro: "Inscrição inválida." };
+  // O mesmo aparelho pode ter sido inscrito por outra conta. O RLS não deixa este
+  // usuário apagar a linha do outro, então a troca de dono usa a chave do servidor,
+  // e só depois de confirmar quem está logado (getContexto acima).
+  if (process.env.SUPABASE_SECRET_KEY) {
+    await criarAdmin().from("push_inscricoes").delete().eq("endpoint", endpoint);
+  } else {
+    await supabase.from("push_inscricoes").delete().eq("endpoint", endpoint);
+  }
+  const { error } = await supabase
+    .from("push_inscricoes")
+    .insert({ oficina_id: oficina.id, endpoint, p256dh, auth });
+  if (error) return { erro: error.message };
+  return { ok: "Aviso ligado." };
+}
+
+export async function removerInscricao(endpoint: string) {
+  const { supabase } = await getContexto();
+  await supabase.from("push_inscricoes").delete().eq("endpoint", endpoint);
 }

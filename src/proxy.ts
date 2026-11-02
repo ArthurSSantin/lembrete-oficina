@@ -1,7 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ROTAS_PUBLICAS = ["/login", "/privacidade", "/manifest.webmanifest", "/icon", "/apple-icon"];
+const ROTAS_PUBLICAS = [
+  "/login",
+  "/esqueci",
+  "/auth/confirmar",
+  "/privacidade",
+  "/manifest.webmanifest",
+  "/icon",
+  "/apple-icon",
+  "/sw.js",
+  // Protegida pelo CRON_SECRET dentro da própria rota.
+  "/api/cron/diario",
+];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

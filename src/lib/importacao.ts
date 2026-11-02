@@ -10,6 +10,8 @@ export type LinhaImportada = {
   data: string; // AAAA-MM-DD ou ""
   km: string;
   valor: string;
+  /** "recomendado" ou vazio (= feito). Vem da planilha exportada pelo sistema. */
+  situacao: string;
 };
 
 export const COLUNAS: { chave: keyof LinhaImportada; nomes: string[] }[] = [
@@ -22,10 +24,11 @@ export const COLUNAS: { chave: keyof LinhaImportada; nomes: string[] }[] = [
   { chave: "data", nomes: ["data", "data do servico", "data do serviço", "ultima visita", "última visita"] },
   { chave: "km", nomes: ["km", "quilometragem"] },
   { chave: "valor", nomes: ["valor", "total"] },
+  { chave: "situacao", nomes: ["situacao", "situação", "status"] },
 ];
 
 function semAcento(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 /** Separa uma linha respeitando aspas. */
@@ -99,6 +102,7 @@ export function lerPlanilha(texto: string): { linhas: LinhaImportada[]; colunasA
       data: normalizarData(valor("data")),
       km: valor("km"),
       valor: valor("valor"),
+      situacao: valor("situacao"),
     };
   });
 

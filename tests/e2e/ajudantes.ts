@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { SENHA_TESTE, SUPABASE_KEY, SUPABASE_URL } from "./ambiente";
+import { SENHA_TESTE, SUPABASE_KEY, SUPABASE_SECRET_KEY, SUPABASE_URL } from "./ambiente";
 
 let contador = 0;
 
@@ -144,4 +144,57 @@ export function cartaoNaSecao(page: Page, secao: string, texto: string) {
     .filter({ has: page.getByRole("heading", { name: secao }) })
     .locator("article")
     .filter({ hasText: texto });
+}
+
+/** Conta + oficina criadas direto no Supabase local (sem passar pela tela). */
+export async function contaViaApi(nomeOficina: string, email = emailTeste()) {
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error } = await sb.auth.signUp({ email, password: SENHA_TESTE });
+  if (error) throw new Error(`Cadastro no Supabase local falhou: ${error.message}`);
+  const { data: oficinaId, error: e2 } = await sb.rpc("criar_oficina", {
+    p_nome: nomeOficina,
+    p_whatsapp: null,
+  });
+  if (e2) throw new Error(`criar_oficina falhou: ${e2.message}`);
+  const { data: tipos } = await sb.from("tipos_servico").select("id, nome");
+  const tipo = (nome: string) => tipos!.find((t) => t.nome === nome)!.id as string;
+  return { email, sb, oficinaId: oficinaId as string, tipo };
+}
+
+/** Cliente + carro (+ serviços opcionais) inseridos direto no banco, como o usuário. */
+export async function semearCliente(
+  conta: Awaited<ReturnType<typeof contaViaApi>>,
+  c: { nome: string; whatsapp: string; placa?: string; modelo?: string; ano?: number },
+  servicos: Record<string, unknown>[] = [],
+) {
+  const { sb, oficinaId } = conta;
+  const { data: cliente, error } = await sb
+    .from("clientes")
+    .insert({ oficina_id: oficinaId, nome: c.nome, whatsapp: c.whatsapp, consentimento: true })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  if (!c.placa) return { clienteId: cliente.id as string, veiculoId: null };
+  const { data: veiculo, error: e2 } = await sb
+    .from("veiculos")
+    .insert({ oficina_id: oficinaId, cliente_id: cliente.id, placa: c.placa, modelo: c.modelo ?? null, ano: c.ano ?? null })
+    .select("id")
+    .single();
+  if (e2) throw new Error(e2.message);
+  for (const s of servicos) {
+    const { error: e3 } = await sb
+      .from("servicos")
+      .insert({ oficina_id: oficinaId, veiculo_id: veiculo.id, ...s });
+    if (e3) throw new Error(e3.message);
+  }
+  return { clienteId: cliente.id as string, veiculoId: veiculo.id as string };
+}
+
+/** Cliente com a chave secreta (ignora RLS). Só para conferir storage/backup nos testes. */
+export function supabaseAdmin() {
+  return createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }

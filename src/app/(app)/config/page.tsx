@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sair, salvarTipoServico } from "@/app/actions";
+import { AvisoDiario } from "@/components/AvisoDiario";
 import { FormModelos } from "@/components/FormModelos";
 import { FormOficina } from "@/components/FormOficina";
 import { getContexto } from "@/lib/oficina";
@@ -24,6 +25,11 @@ export default async function ConfigPage() {
       <section className="cartao">
         <h2 className="mb-3 text-xl font-bold">Oficina</h2>
         <FormOficina oficina={oficina} />
+      </section>
+
+      <section className="cartao">
+        <h2 className="mb-3 text-xl font-bold">Aviso diário no celular</h2>
+        <AvisoDiario chavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""} />
       </section>
 
       <section className="cartao">
@@ -140,6 +146,17 @@ export default async function ConfigPage() {
         <p className="mt-3 text-xs text-tinta-3">
           Mudar um prazo vale para os próximos atendimentos, não muda lembretes já agendados.
         </p>
+      </section>
+
+      <section className="cartao space-y-3 text-sm">
+        <h2 className="text-xl font-bold">Seus dados</h2>
+        <p className="text-tinta-2">
+          Baixe uma planilha com todos os clientes, carros e serviços. Ela abre no Excel e pode ser
+          importada de volta. Toda segunda o sistema também guarda uma cópia automática.
+        </p>
+        <a href="/api/exportar" download className="botao-sec w-full">
+          Baixar planilha com meus dados
+        </a>
       </section>
 
       <section className="cartao space-y-3 text-sm">
