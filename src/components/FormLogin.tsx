@@ -40,7 +40,7 @@ export function FormLogin() {
       <button
         type="button"
         onClick={() => setModo(modo === "entrar" ? "cadastrar" : "entrar")}
-        className="w-full text-sm text-tinta underline underline-offset-2"
+        className="min-h-11 w-full text-sm text-tinta underline"
       >
         {modo === "entrar" ? "Ainda não tem conta? Criar conta" : "Já tem conta? Entrar"}
       </button>

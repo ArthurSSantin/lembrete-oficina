@@ -86,7 +86,7 @@ export default async function ResultadosPage({ searchParams }: PageProps<"/resul
               key={x.valor}
               href={`?p=${x.valor}`}
               aria-current={atual ? "page" : undefined}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+              className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold ${
                 atual ? "bg-asfalto text-white" : "border border-linha bg-white text-tinta-2"
               }`}
             >
@@ -96,14 +96,23 @@ export default async function ResultadosPage({ searchParams }: PageProps<"/resul
         })}
       </nav>
 
-      <section className="rounded-[10px] bg-asfalto p-5 text-white">
-        <p className="text-white/75">Voltou para o caixa com os lembretes</p>
-        <p className="font-display text-5xl font-bold text-sinal">{formatarMoeda(valorRetornos)}</p>
-        <p className="mt-2 text-sm text-white/75">
-          {retornos.length > 0
-            ? `${plural(retornos.length, "cliente voltou", "clientes voltaram")} depois de receber a mensagem.`
-            : "Quando um cliente chamado pelo sistema voltar, o valor do serviço aparece aqui."}
-        </p>
+      <section className="text-xl leading-snug">
+        {retornos.length > 0 ? (
+          <p>
+            Nos últimos {PERIODOS.find((x) => Number(x.valor) === dias)!.rotulo},{" "}
+            {plural(retornos.length, "cliente voltou", "clientes voltaram")} depois da mensagem e
+            deixou{retornos.length > 1 ? "ram" : ""}{" "}
+            <strong className="font-display text-3xl whitespace-nowrap">
+              {formatarMoeda(valorRetornos)}
+            </strong>{" "}
+            na oficina.
+          </p>
+        ) : (
+          <p className="text-tinta-2">
+            Ainda nenhum retorno neste período. Quando um cliente chamado pelo sistema voltar e você
+            registrar o serviço, o valor aparece aqui.
+          </p>
+        )}
       </section>
 
       <section className="cartao">

@@ -85,7 +85,7 @@ export function Importador() {
           {COLUNAS.map((c) => c.chave).join(", ")}. Só nome e WhatsApp são obrigatórios. Com serviço
           e data, o lembrete já é calculado.
         </p>
-        <button type="button" onClick={() => ler(EXEMPLO)} className="text-tinta underline underline-offset-2">
+        <button type="button" onClick={() => ler(EXEMPLO)} className="link-toque">
           Ver um exemplo
         </button>
       </div>
@@ -103,7 +103,7 @@ export function Importador() {
           className="campo font-mono text-xs"
         />
         <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm">
-          <span className="botao-sec !py-2">Escolher arquivo CSV</span>
+          <span className="botao-sec">Escolher arquivo CSV</span>
           <input type="file" accept=".csv,.tsv,.txt,text/csv" onChange={arquivo} className="sr-only" />
         </label>
       </div>
@@ -142,7 +142,7 @@ export function Importador() {
                 </table>
               </div>
               {linhas.length > 5 && <p className="text-xs text-tinta-3">Mostrando as 5 primeiras.</p>}
-              <label className="flex items-start gap-3 text-sm">
+              <label className="flex min-h-11 items-start gap-3 py-1 text-sm">
                 <input
                   type="checkbox"
                   checked={autorizaram}

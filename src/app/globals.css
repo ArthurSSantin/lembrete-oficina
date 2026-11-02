@@ -11,9 +11,11 @@
 
   --color-fundo: #edefea;
   --color-linha: #d3d8d0;
+  /* Borda de campo: 3.4:1 sobre branco, o mínimo para controles. */
+  --color-borda-campo: #848e89;
   --color-tinta: #1b2220;
   --color-tinta-2: #47524d;
-  --color-tinta-3: #66716c;
+  --color-tinta-3: #5c6762;
   --color-asfalto: #1b2220;
   --color-asfalto-2: #2a3330;
 
@@ -31,6 +33,36 @@
 body {
   background: var(--color-fundo);
   color: var(--color-tinta);
+  caret-color: var(--color-tinta);
+  scrollbar-color: var(--color-tinta-3) transparent;
+}
+
+::selection {
+  background: var(--color-sinal);
+  color: var(--color-tinta);
+}
+
+/* Datas, km, valores e placas alinham coluna a coluna. */
+.font-display,
+dd,
+time,
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+::placeholder {
+  color: var(--color-tinta-3);
+  opacity: 1;
+}
+
+p,
+li,
+dd {
+  text-wrap: pretty;
 }
 
 h1,
@@ -40,17 +72,13 @@ h2 {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-sinal);
+  outline: 3px solid var(--color-tinta);
   outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/* Nas áreas escuras o contorno vira amarelo. */
+.bg-asfalto :focus-visible {
+  outline-color: var(--color-sinal);
 }
 
 details.menu > summary::-webkit-details-marker {
@@ -59,7 +87,7 @@ details.menu > summary::-webkit-details-marker {
 
 @layer components {
   .campo {
-    @apply w-full rounded-lg border border-linha bg-white px-3 py-3 text-base outline-none focus:border-tinta focus:ring-2 focus:ring-sinal/40;
+    @apply w-full rounded-lg border border-borda-campo bg-white px-3 py-3 text-base outline-none focus:border-tinta focus:ring-2 focus:ring-sinal/40;
   }
   .rotulo {
     @apply mb-1 block text-sm font-semibold text-tinta-2;
@@ -78,6 +106,10 @@ details.menu > summary::-webkit-details-marker {
   }
   .etiqueta {
     @apply shrink-0 rounded-md px-2 py-1 text-xs font-semibold;
+  }
+  /* Link de texto que também é alvo de toque confortável (44px). */
+  .link-toque {
+    @apply inline-flex min-h-11 items-center text-tinta underline;
   }
   .aviso {
     @apply rounded-lg bg-sinal-claro p-2 text-xs text-sinal-escuro;

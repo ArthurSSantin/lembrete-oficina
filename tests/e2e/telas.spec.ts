@@ -98,6 +98,22 @@ test("Ajustes: salva o nome da oficina", async ({ page }) => {
   await expect(page.getByLabel("Nome da oficina")).toHaveValue(novoNome);
   // O nome aparece no menu lateral.
   await expect(page.locator("aside")).toContainText(novoNome);
+
+  // Editar o prazo de um serviço existente (input escondido tipo_id).
+  const bateria = () =>
+    page
+      .locator("form")
+      .filter({ has: page.locator('input[name="tipo_id"]') })
+      .filter({ has: page.locator('input[name="nome"][value="Bateria"]') });
+  await expect(bateria()).toHaveCount(1);
+  await bateria().locator('input[name="intervalo_dias"]').fill("700");
+  await bateria().getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect
+    .poll(async () => {
+      await page.reload();
+      return bateria().locator('input[name="intervalo_dias"]').inputValue();
+    })
+    .toBe("700");
 });
 
 test("Novo atendimento: erros de validação mantêm o que foi digitado", async ({ page }) => {

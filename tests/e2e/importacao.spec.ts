@@ -85,7 +85,7 @@ test("importar planilha: cria clientes/carros, gera lembrete e reimportar não d
 
   // O lembrete aparece no Hoje.
   await page.getByRole("link", { name: "Ver quem chamar hoje" }).click();
-  await expect(cartaoNaSecao(page, "Lembretes vencidos", `Ana Import ${sufixo}`)).toBeVisible();
+  await expect(cartaoNaSecao(page, "Para chamar hoje", `Ana Import ${sufixo}`)).toBeVisible();
 
   // Reimportar a mesma planilha.
   await importar(page, planilha, 4);
@@ -171,7 +171,7 @@ test("reimportar com data mais nova substitui o lembrete antigo; data futura é 
 
   // No Hoje, um cartão só, com a visita mais nova.
   await page.goto("/");
-  const cartoes = cartaoNaSecao(page, "Lembretes vencidos", nome);
+  const cartoes = cartaoNaSecao(page, "Para chamar hoje", nome);
   await expect(cartoes).toHaveCount(1);
   await expect(cartoes).toContainText("10 dias de atraso");
   await expect(page.locator("article").filter({ hasText: nome })).toHaveCount(1);

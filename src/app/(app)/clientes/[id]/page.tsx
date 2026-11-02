@@ -34,7 +34,7 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
 
   return (
     <div className="space-y-4">
-      <Link href="/clientes" className="text-sm text-tinta underline underline-offset-2">
+      <Link href="/clientes" className="link-toque text-sm">
         Voltar para Clientes
       </Link>
       <div className="cartao">
@@ -44,7 +44,7 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
           {cliente.nao_contatar ? (
             <span className="text-vermelho">Pediu para não receber mensagens</span>
           ) : cliente.consentimento ? (
-            <span className="text-verde">✓ Autorizou receber lembretes</span>
+            <span className="text-verde">Autorizou receber lembretes</span>
           ) : (
             <span className="text-sinal-escuro">Sem autorização registrada</span>
           )}

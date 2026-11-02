@@ -5,7 +5,7 @@ function Adesivo() {
   return (
     <div
       aria-hidden
-      className="w-44 -rotate-3 rounded-md border-2 border-tinta bg-sinal p-3 font-display text-tinta shadow-[4px_4px_0_0_rgba(0,0,0,0.25)]"
+      className="w-44 -rotate-3 rounded-md border-2 border-tinta bg-sinal p-3 font-display text-tinta shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)]"
     >
       <p className="text-sm font-semibold">Próxima troca</p>
       <p className="text-3xl leading-tight font-bold">45.000 km</p>

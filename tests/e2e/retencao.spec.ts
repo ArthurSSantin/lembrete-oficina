@@ -52,7 +52,7 @@ test("recomendado: vence na data, é chamado e conta como recomendação que vir
   expect(rec).toEqual({ origem: "recomendado", proxima_data: dataSP(-3), valor: 800 });
 
   await page.goto("/");
-  const cartao = cartaoNaSecao(page, "Lembretes vencidos", nome);
+  const cartao = cartaoNaSecao(page, "Para chamar hoje", nome);
   await expect(cartao).toContainText("Revisão de freios");
   await expect(cartao).toContainText("foi recomendado em");
   await expect(cartao).toContainText("3 dias de atraso");
@@ -72,7 +72,7 @@ test("recomendado: vence na data, é chamado e conta como recomendação que vir
   await page.goto("/resultados");
   await expect(numeroResultado(page, "Voltaram depois da mensagem")).toHaveText("1");
   await expect(numeroResultado(page, "Recomendações que viraram serviço")).toHaveText("1");
-  await expect(page.locator("section").filter({ hasText: "Voltou para o caixa" })).toContainText(
+  await expect(page.locator("section").filter({ hasText: "depois da mensagem e" })).toContainText(
     "750,00",
   );
 });
@@ -131,7 +131,7 @@ test("sumido: última visita há 400 dias sem lembrete em aberto aparece em 'Cli
 
   // Serviço sem prazo -> não gera lembrete.
   await page.goto("/config");
-  await page.getByPlaceholder("Ex: Troca de correia dentada").fill("Lavagem");
+  await page.locator("#novo-nome").fill("Lavagem");
   await page.getByRole("button", { name: "Adicionar" }).click();
   await expect(page.locator('input[name="nome"][value="Lavagem"]')).toHaveCount(1);
 
@@ -168,7 +168,7 @@ test("cliente com lembrete vencido há muito tempo não aparece duas vezes (venc
     servicos: ["Troca de óleo e filtro"],
   });
   await page.goto("/");
-  await expect(cartaoNaSecao(page, "Lembretes vencidos", nome)).toHaveCount(1);
+  await expect(cartaoNaSecao(page, "Para chamar hoje", nome)).toHaveCount(1);
   // A seção diz "não têm lembrete em aberto"; este cliente tem.
   await expect(cartaoNaSecao(page, "Clientes sumidos", nome)).toHaveCount(0);
 });
@@ -186,7 +186,7 @@ test("'Cliente não quer mensagens' tira o cliente do Hoje e marca na lista de c
     servicos: ["Troca de óleo e filtro"],
   });
   await page.goto("/");
-  const cartao = cartaoNaSecao(page, "Lembretes vencidos", nome);
+  const cartao = cartaoNaSecao(page, "Para chamar hoje", nome);
   await cartao.getByText("Mais").click();
   await cartao.getByRole("button", { name: "Cliente não quer mensagens" }).click();
   await expect(page.getByText(nome)).toHaveCount(0);
@@ -211,10 +211,10 @@ test("adiar 7 dias tira do vencido e põe em 'Próximos 7 dias'", async ({ page 
     servicos: ["Troca de óleo e filtro"],
   });
   await page.goto("/");
-  const cartao = cartaoNaSecao(page, "Lembretes vencidos", nome);
+  const cartao = cartaoNaSecao(page, "Para chamar hoje", nome);
   await cartao.getByText("Mais").click();
   await cartao.getByRole("button", { name: "Lembrar daqui a 7 dias" }).click();
-  await expect(cartaoNaSecao(page, "Lembretes vencidos", nome)).toHaveCount(0);
+  await expect(cartaoNaSecao(page, "Para chamar hoje", nome)).toHaveCount(0);
   await expect(cartaoNaSecao(page, "Próximos 7 dias", nome)).toContainText("Em 7 dias");
 });
 

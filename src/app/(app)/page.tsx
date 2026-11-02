@@ -69,7 +69,7 @@ export default async function HojePage() {
       )}
 
       {paraChamar.length > 0 && (
-        <Secao titulo="Lembretes vencidos">
+        <Secao titulo="Para chamar hoje">
           {paraChamar.map((l) => (
             <LembreteCard key={l.id} lembrete={l} atrasoDias={diasEntre(l.proxima_data!, hoje)} />
           ))}

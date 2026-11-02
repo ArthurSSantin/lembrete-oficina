@@ -100,7 +100,7 @@ export async function salvarOficina(_: Estado, form: FormData): Promise<Estado> 
 
 export async function salvarTipoServico(form: FormData) {
   const { supabase, oficina } = await getContexto();
-  const id = texto(form, "id");
+  const id = texto(form, "tipo_id");
   const dados = {
     nome: texto(form, "nome"),
     intervalo_dias: inteiro(form, "intervalo_dias"),

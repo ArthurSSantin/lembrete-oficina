@@ -40,12 +40,20 @@ export default async function ConfigPage() {
           O lembrete sai no que vier primeiro: os dias ou os km (estimados pelo quanto o carro
           roda). Deixe em branco o que não se aplica.
         </p>
-        <ul className="space-y-3">
+        <ul className="divide-y divide-linha border-y border-linha">
           {(tipos ?? []).map((t) => (
             <li key={t.id}>
-              <form action={salvarTipoServico} className="rounded-lg border border-linha p-3">
-                <input type="hidden" name="id" value={t.id} />
-                <input name="nome" defaultValue={t.nome} className="campo mb-2 font-medium" />
+              <form action={salvarTipoServico} className="py-4">
+                <input type="hidden" name="tipo_id" value={t.id} />
+                <label className="sr-only" htmlFor={`nome-${t.id}`}>
+                  Nome do serviço
+                </label>
+                <input
+                  id={`nome-${t.id}`}
+                  name="nome"
+                  defaultValue={t.nome}
+                  className="campo mb-2 font-semibold"
+                />
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-xs text-tinta-2">
                     A cada (dias)
@@ -66,8 +74,8 @@ export default async function ConfigPage() {
                     />
                   </label>
                 </div>
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm text-tinta-2">
+                <details className="mt-1">
+                  <summary className="flex min-h-11 cursor-pointer items-center text-sm text-tinta-2">
                     Mensagem própria para este serviço
                   </summary>
                   <textarea
@@ -78,12 +86,17 @@ export default async function ConfigPage() {
                     className="campo mt-2 text-sm"
                   />
                 </details>
-                <div className="mt-2 flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="ativo" defaultChecked={t.ativo} className="h-5 w-5" />
+                <div className="flex items-center justify-between">
+                  <label className="flex min-h-11 items-center gap-2 pr-4 text-sm">
+                    <input
+                      type="checkbox"
+                      name="ativo"
+                      defaultChecked={t.ativo}
+                      className="h-5 w-5 accent-tinta"
+                    />
                     Ativo
                   </label>
-                  <button type="submit" className="botao-sec !py-2 text-sm">
+                  <button type="submit" className="botao-sec text-sm">
                     Salvar
                   </button>
                 </div>
@@ -92,12 +105,33 @@ export default async function ConfigPage() {
           ))}
         </ul>
 
-        <form action={salvarTipoServico} className="mt-4 rounded-lg border border-dashed border-linha p-3">
-          <p className="mb-2 text-sm font-medium">Adicionar serviço</p>
-          <input name="nome" required placeholder="Ex: Troca de correia dentada" className="campo mb-2" />
+        <form action={salvarTipoServico} className="mt-6 space-y-3">
+          <h3 className="font-display text-lg font-bold">Adicionar serviço</h3>
+          <div>
+            <label className="rotulo" htmlFor="novo-nome">
+              Nome
+            </label>
+            <input
+              id="novo-nome"
+              name="nome"
+              required
+              placeholder="Ex: Troca de correia dentada"
+              className="campo"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-2">
-            <input name="intervalo_dias" inputMode="numeric" placeholder="Dias" className="campo" />
-            <input name="intervalo_km" inputMode="numeric" placeholder="Km" className="campo" />
+            <div>
+              <label className="rotulo" htmlFor="novo-dias">
+                A cada (dias)
+              </label>
+              <input id="novo-dias" name="intervalo_dias" inputMode="numeric" className="campo" />
+            </div>
+            <div>
+              <label className="rotulo" htmlFor="novo-km">
+                A cada (km)
+              </label>
+              <input id="novo-km" name="intervalo_km" inputMode="numeric" className="campo" />
+            </div>
           </div>
           <button type="submit" className="botao mt-2 w-full">
             Adicionar
@@ -110,7 +144,7 @@ export default async function ConfigPage() {
 
       <section className="cartao space-y-3 text-sm">
         <p className="text-tinta-2">Conectado como {user.email}</p>
-        <Link href="/privacidade" className="block text-tinta underline underline-offset-2">
+        <Link href="/privacidade" className="link-toque">
           Política de privacidade
         </Link>
         <form action={sair}>

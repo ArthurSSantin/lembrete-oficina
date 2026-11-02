@@ -11,7 +11,7 @@ async function NomeOficina() {
 }
 
 const nome = (
-  <Suspense fallback={<span className="inline-block h-5 w-32 animate-pulse rounded bg-white/20" />}>
+  <Suspense fallback={<span className="inline-block h-5 w-32 motion-safe:animate-pulse rounded bg-white/20" />}>
     <NomeOficina />
   </Suspense>
 );

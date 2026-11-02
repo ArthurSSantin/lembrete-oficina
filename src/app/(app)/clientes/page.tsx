@@ -52,7 +52,7 @@ export default async function ClientesPage({ searchParams }: PageProps<"/cliente
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Clientes</h1>
-        <Link href="/clientes/importar" className="botao-sec !py-2 text-sm">
+        <Link href="/clientes/importar" className="botao-sec text-sm">
           Importar planilha
         </Link>
       </div>

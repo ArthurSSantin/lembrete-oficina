@@ -108,7 +108,7 @@ test("cadastro → atendimento antigo → lembrete → WhatsApp → retorno em R
   await expect(numeroResultado(page, "Clientes chamados")).toHaveText("1");
   await expect(numeroResultado(page, "Voltaram depois da mensagem")).toHaveText("1");
   await expect(numeroResultado(page, "Taxa de retorno")).toHaveText("100%");
-  await expect(page.locator("section").filter({ hasText: "Voltou para o caixa" })).toContainText(
+  await expect(page.locator("section").filter({ hasText: "depois da mensagem e" })).toContainText(
     "300,00",
   );
 });

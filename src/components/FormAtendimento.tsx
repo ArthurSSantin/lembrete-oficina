@@ -138,7 +138,7 @@ export function FormAtendimento({
             onChange={(e) => setCampos({ ...campos, whatsapp: e.target.value })}
           />
         </div>
-        <label className="flex items-start gap-3 text-sm text-tinta-2">
+        <label className="flex min-h-11 items-start gap-3 py-1 text-sm text-tinta-2">
           <input
             type="checkbox"
             name="consentimento"

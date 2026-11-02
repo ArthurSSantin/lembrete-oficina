@@ -101,21 +101,21 @@ export function Sequencia({ itens: inicial }: { itens: ItemSequencia[] }) {
         <span>
           {indice + 1} de {itens.length}
         </span>
-        <Link href="/" className="underline">
-          Sair
+        <Link href="/" className="link-toque px-2">
+          Sair da fila
         </Link>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-linha" aria-hidden>
         <div
-          className="h-full bg-sinal transition-[width]"
+          className="h-full bg-sinal motion-safe:transition-[width]"
           style={{ width: `${(indice / itens.length) * 100}%` }}
         />
       </div>
 
       <article className="cartao space-y-3">
-        <p className="text-sm font-semibold text-tinta-2">{item.motivo}</p>
         <div>
-          <h2 className="text-2xl font-bold">{item.nome}</h2>
+          <span className="etiqueta inline-block bg-sinal-claro text-sinal-escuro">{item.motivo}</span>
+          <h2 className="mt-2 text-2xl font-bold">{item.nome}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-tinta-2">
             <Placa placa={item.placa} />
             {item.carro}
@@ -130,7 +130,7 @@ export function Sequencia({ itens: inicial }: { itens: ItemSequencia[] }) {
           Mensagem
         </label>
         {mensagem === null && !erro ? (
-          <div className="h-36 animate-pulse rounded-lg bg-fundo" aria-label="Preparando mensagem" />
+          <div className="h-36 motion-safe:animate-pulse rounded-lg bg-fundo" aria-label="Preparando mensagem" />
         ) : (
           <textarea
             id="mensagem-seq"
