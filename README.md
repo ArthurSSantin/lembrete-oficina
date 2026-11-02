@@ -20,7 +20,9 @@ todo dia quem chamar, com a mensagem pronta.
 ### 1. Banco de dados (Supabase, grátis)
 
 1. Crie uma conta em https://supabase.com e um projeto novo (região São Paulo).
-2. Vá em **SQL Editor**, cole o conteúdo de `supabase/schema.sql` e clique em **Run**.
+2. Vá em **SQL Editor**, cole o conteúdo de `supabase/migrations/20261102000000_inicial.sql`
+   e clique em **Run**. Mudanças futuras no banco entram como novos arquivos em
+   `supabase/migrations/` (a integração do Supabase com o GitHub aplica esses arquivos).
 3. Em **Authentication > Sign In / Providers > Email**, desative
    "Confirm email" se quiser entrar sem confirmar o e-mail (uso pessoal).
 4. Em **Project Settings > API Keys**, copie a URL do projeto e a *publishable key*.
@@ -49,8 +51,8 @@ acesse `http://IP-DO-COMPUTADOR:3000` pelo celular.
 
 ### 4. Colocar no ar (Vercel, grátis)
 
-1. Suba o projeto para um repositório no GitHub.
-2. Em https://vercel.com, importe o repositório.
+1. O código já está em https://github.com/ArthurSSantin/lembrete-oficina (privado).
+2. Em https://vercel.com, entre com o GitHub e importe o repositório `lembrete-oficina`.
 3. Cadastre as mesmas variáveis do `.env.local` em **Settings > Environment Variables**.
 4. No Supabase, em **Authentication > URL Configuration**, coloque o endereço da Vercel
    em "Site URL".

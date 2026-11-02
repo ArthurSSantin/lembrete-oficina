@@ -50,11 +50,13 @@ Feito (ver README para instalação):
 - Sem chave da API de IA, usa uma mensagem padrão.
 
 Verificado: `tsc`, `eslint` e `next build` passando; lógica de datas testada.
-**Ainda não testado contra um banco Supabase real.**
+Supabase criado (projeto `kjttmctvtzmdskdkgaip`, região São Paulo), tabelas criadas e RLS
+conferida: sem login, nada é lido nem gravado. Código no GitHub (privado).
+Falta testar o fluxo completo logado.
 
 ## Próximos passos
 
-1. Criar o projeto no Supabase, rodar `supabase/schema.sql`, preencher `.env.local`.
+1. ~~Criar o projeto no Supabase, rodar o SQL, preencher `.env.local`.~~ Feito em 02/11/2026.
 2. Testar o fluxo completo: cadastro, primeiro atendimento, lembrete, envio.
 3. Publicar na Vercel e instalar no celular ("Adicionar à tela inicial").
 4. Usar no auto center por 1 a 3 meses e medir retornos.
